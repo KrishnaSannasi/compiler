@@ -1,4 +1,4 @@
-use lib_lexer_types::{CodePoint, Error, ErrorType, Keyword, Result, Symbol, Token, TokenType};
+use lib_lexer_types::{CodePoint, Error, ErrorType, Keyword, Result, Symbol, Token, TokenType, Input};
 
 macro_rules! get_token_ty_from_ident {
     ($($kw:ident => $value:literal),* $(,)?) => {
@@ -53,7 +53,7 @@ impl<'input> Lexer<'input> {
             None => return Ok(None),
         };
 
-        let (tok_type, (lexeme, rest)) = if first.is_whitespace() {
+        let whitespace = if first.is_whitespace() {
             let mut rows = 0;
             let mut cols = 0;
             let (lexeme, rest) = split_on_false(self.input, |c| {
@@ -81,12 +81,20 @@ impl<'input> Lexer<'input> {
 
             let start = std::mem::replace(&mut self.start, end);
 
-            return Ok(Some(Token {
+            Some(Input {
                 lexeme,
-                tok_type: TokenType::Whitespace,
-                span: start.span(end),
-            }));
-        } else if first.is_alphabetic() || first == '_' {
+                span: start.span(end)
+            })
+        } else {
+            None
+        };
+
+        let first = match self.input.chars().next() {
+            Some(first) => first,
+            None => return Ok(None),
+        };
+
+        let (tok_type, (lexeme, rest)) = if first.is_alphabetic() || first == '_' {
             let (ident, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
 
             let get_tok_ty = get_token_ty_from_ident!(
@@ -147,9 +155,12 @@ impl<'input> Lexer<'input> {
         let start = std::mem::replace(&mut self.start, end);
 
         Ok(Some(Token {
-            lexeme,
             tok_type,
-            span: start.span(end),
+            whitespace,
+            input: Input {
+                lexeme,
+                span: start.span(end),
+            },
         }))
     }
 }
