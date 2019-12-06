@@ -1,4 +1,4 @@
-use lib_lexer_types::{Token, TokenType, Symbol};
+use lib_lexer_types::{Symbol, Token, TokenType};
 
 pub mod context;
 
@@ -49,7 +49,7 @@ pub enum Expr<'input, 'hacx> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Literal<'input> {
     Integer(Token<'input>),
-    Float(Token<'input>)
+    Float(Token<'input>),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

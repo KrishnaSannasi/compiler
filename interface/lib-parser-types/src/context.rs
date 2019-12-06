@@ -1,12 +1,10 @@
-
-use lib_arena::{Arena, local::LocalArena, sync::SyncArena};
-use super::{HAst, Let, Expr, Assign};
+use super::{Assign, Expr, HAst, Let};
+use lib_arena::{local::LocalArena, sync::SyncArena, Arena};
 
 pub type LocalContext<A, B, C, D> =
     Context<LocalArena<A>, LocalArena<B>, LocalArena<C>, LocalArena<D>>;
-    
-pub type SyncContext<A, B, C, D> =
-    Context<SyncArena<A>, SyncArena<B>, SyncArena<C>, SyncArena<D>>;
+
+pub type SyncContext<A, B, C, D> = Context<SyncArena<A>, SyncArena<B>, SyncArena<C>, SyncArena<D>>;
 
 #[derive(Default)]
 pub struct Context<A, B, C, D> {
@@ -51,7 +49,7 @@ impl<'input, 'hacx> ContextRef<'input, 'hacx> {
     #[allow(clippy::mut_from_ref)]
     pub fn alloc<V>(self, value: V) -> &'hacx mut V
     where
-        Self: ContextOverload<'hacx, V>
+        Self: ContextOverload<'hacx, V>,
     {
         ContextOverload::alloc(self, value)
     }

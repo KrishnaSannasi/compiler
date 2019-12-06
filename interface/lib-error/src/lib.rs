@@ -13,7 +13,7 @@ impl<N, E, P> WithContext<N> for Error<E, P> {
     fn with_context(self, err: N) -> Self::Output {
         Error {
             err,
-            cause: Some(self)
+            cause: Some(self),
         }
     }
 }
@@ -27,8 +27,8 @@ impl<T, N, E, P> WithContext<N> for Result<T, Error<E, P>> {
             Ok(value) => Ok(value),
             Err(cause) => Err(Error {
                 err,
-                cause: Some(cause)
-            })
+                cause: Some(cause),
+            }),
         }
     }
 }

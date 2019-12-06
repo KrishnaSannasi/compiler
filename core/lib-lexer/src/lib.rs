@@ -1,4 +1,6 @@
-use lib_lexer_types::{CodePoint, Error, ErrorType, Keyword, Result, Symbol, Token, TokenType, Input};
+use lib_lexer_types::{
+    CodePoint, Error, ErrorType, Input, Keyword, Result, Symbol, Token, TokenType,
+};
 
 macro_rules! get_token_ty_from_ident {
     ($($kw:ident => $value:literal),* $(,)?) => {
@@ -83,7 +85,7 @@ impl<'input> Lexer<'input> {
 
             Some(Input {
                 lexeme,
-                span: start.span(end)
+                span: start.span(end),
             })
         } else {
             None

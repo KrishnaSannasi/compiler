@@ -7,8 +7,14 @@ pub type Result<T, E = LexError> = std::result::Result<T, E>;
 pub trait Lexer<'input> {
     fn parse(&mut self) -> Result<Option<Token<'input>>>;
 
-    fn peekable(self) -> Peekable<'input, Self> where Self: Sized {
-        Peekable { inner: self, tokens: Vec::new() }
+    fn peekable(self) -> Peekable<'input, Self>
+    where
+        Self: Sized,
+    {
+        Peekable {
+            inner: self,
+            tokens: Vec::new(),
+        }
     }
 }
 
@@ -26,7 +32,7 @@ impl<'input, L: Lexer<'input> + ?Sized> Lexer<'input> for Box<L> {
 
 pub struct Peekable<'input, L> {
     inner: L,
-    tokens: Vec<Token<'input>>
+    tokens: Vec<Token<'input>>,
 }
 
 impl<'input, L: Lexer<'input>> Peekable<'input, L> {
@@ -37,7 +43,7 @@ impl<'input, L: Lexer<'input>> Peekable<'input, L> {
 
         Ok(self.tokens.last().copied())
     }
-    
+
     // fn peek_n(&mut self, n: usize) -> Option<&[Token<'input>]> {
     //     if self.tokens.len() < n {
     //         self.tokens.extend(self.inner.parse()?)
@@ -51,7 +57,7 @@ impl<'input, L: Lexer<'input>> Lexer<'input> for Peekable<'input, L> {
     fn parse(&mut self) -> Result<Option<Token<'input>>> {
         match self.tokens.pop() {
             Some(token) => Ok(Some(token)),
-            None => self.inner.parse()
+            None => self.inner.parse(),
         }
     }
 }
@@ -70,7 +76,7 @@ pub enum ErrorType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Input<'input> {
     pub lexeme: &'input str,
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
