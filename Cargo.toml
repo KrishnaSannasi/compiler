@@ -5,8 +5,10 @@ members = [
     
     'interface/lib-error',
     'interface/lib-lexer-types',
+    'interface/lib-parser-types',
 
     'core/lib-lexer',
+    'core/lib-parser',
 
     'tools/lib-arena'
 ]

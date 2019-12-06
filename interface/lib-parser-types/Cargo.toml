@@ -1,0 +1,12 @@
+[package]
+name = "lib-parser-types"
+version = "0.1.0"
+authors = ["Ozaren <krishna.sd.2012@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lib-lexer-types = { path = '../lib-lexer-types' }
+lib-error = { path = '../lib-error' }
+lib-arena = { path = '../../tools/lib-arena' }
