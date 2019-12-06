@@ -4,6 +4,7 @@ use lib_error::WithContext as _;
 
 use lib_lexer_types::{
     Lexer,
+    Peekable,
     Token,
     TokenType,
     Keyword,
@@ -15,7 +16,7 @@ use lib_parser_types::{
     Error,
     HAst,
     Expr,
-    HAstPtr,
+    Literal,
     context::ContextRef,
 };
 
@@ -35,81 +36,101 @@ macro_rules! any {
 }
 
 pub struct Parser<'input, 'hacx, L> {
-    lexer: L,
+    lexer: Peekable<'input, L>,
     ctx: ContextRef<'input, 'hacx>
 }
 
 impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
     pub fn new(lexer: L, ctx: ContextRef<'input, 'hacx>) -> Self {
-        Self { lexer, ctx }
+        Self { lexer: lexer.peekable(), ctx }
     }
 
-    fn expect(&mut self, tok_type: TokenType) -> Result<(Option<Token<'input>>, Token<'input>)> {
-        let (ws, token) = try_lex!(self.lexer.parse_with_whitespace());
+    fn expect(&mut self, tok_type: TokenType) -> Result<Token<'input>> {
+        let token = try_lex!(self.lexer.parse());
 
         match token {
-            Some(token) if token.tok_type == tok_type => Ok((ws, token)),
+            Some(token) if token.tok_type == tok_type => Ok(token),
             _ => Err(Error::Expected(tok_type))?
         }
     }
 
-    fn expect_any(&mut self, tok_type: impl Clone + IntoIterator<Item = TokenType>) -> Result<(Option<Token<'input>>, Token<'input>)> {
-        let (ws, token) = try_lex!(self.lexer.parse_with_whitespace());
+    fn expect_any(&mut self, tok_type: impl Clone + IntoIterator<Item = TokenType>) -> Result<Token<'input>> {
+        let token = try_lex!(self.lexer.parse());
 
         match token {
-            Some(token) if tok_type.clone().into_iter().any(|tok_type| tok_type == token.tok_type) => Ok((ws, token)),
+            Some(token) if tok_type.clone().into_iter().any(|tok_type| tok_type == token.tok_type) => Ok(token),
             _ => Err(Error::ExpectedOneOf(tok_type.into_iter().collect()))?
         }
     }
 
-    pub fn parse(&mut self) -> Result<Option<HAstPtr<'input, 'hacx>>> {
-        let (ws, token) = try_lex!(self.lexer.parse_with_whitespace());
+    pub fn parse(&mut self) -> Result<Option<HAst<'input, 'hacx>>> {
+        let token = try_lex!(self.lexer.parse());
         let token = match token {
             Some(token) => token,
             None => return Ok(None)
         };
 
         match token.tok_type {
-            TokenType::Keyword(Keyword::Let) => self.parse_let(ws, token),
+            TokenType::Keyword(Keyword::Let) => self.parse_let(token),
             _ => Ok(None)
         }
     }
 
-    fn parse_let(&mut self, ws_0: Option<Token<'input>>, kw_let: Token<'input>) -> Result<Option<HAstPtr<'input, 'hacx>>> {
-        let (ws, token) = self.expect_any(any!(TokenType::Keyword(Keyword::Mut), TokenType::Identifier))?;
+    fn parse_let(&mut self, kw_let: Token<'input>) -> Result<Option<HAst<'input, 'hacx>>> {
+        let token = self.expect_any(any!(TokenType::Keyword(Keyword::Mut), TokenType::Identifier))?;
         
-        let (kw_mut, ws_1, ident) = if let TokenType::Keyword(Keyword::Mut) = token.tok_type {
-            let (ws_1, ident) = self.expect(TokenType::Identifier)?;
+        let (kw_mut, ident) = if let TokenType::Keyword(Keyword::Mut) = token.tok_type {
+            let ident = self.expect(TokenType::Identifier)?;
 
-            (Some((ws, token)), ws_1, ident)
+            (Some(token), ident)
         } else {
-            (None, ws, token)
+            (None, token)
         };
         
-        let (ws_2, sym_assign) = self.expect(TokenType::Symbol(Symbol::Assign))?;
-        let (ws_value, value) = self.expect(TokenType::Identifier)?;
-        let (ws_3, sym_semi) = self.expect(TokenType::Symbol(Symbol::Semicolon))?;
+        let sym_assign = self.expect(TokenType::Symbol(Symbol::Assign))?;
+        let value = self.parse_expr()?;
+        let sym_semi = self.expect(TokenType::Symbol(Symbol::Semicolon))?;
 
-        let value = Expr::Identifier(ws_value, value);
+        let ast_let = lib_parser_types::Let { kw_let, kw_mut, ident, sym_assign, value, sym_semi, };
 
-        #[rustfmt::ignore]
-        let ast_let = lib_parser_types::Let {
-                  kw_let,
-                  kw_mut,
-            ws_1, ident,
-            ws_2, sym_assign,
-                  value,
-            ws_3, sym_semi,
+        Ok(Some(HAst::Let(self.ctx.alloc(ast_let))))
+    }
+
+    fn parse_expr(&mut self) -> Result<Expr<'input, 'hacx>> {
+        self.parse_primary()
+    }
+
+    fn parse_primary(&mut self) -> Result<Expr<'input, 'hacx>> {
+        let first = match try_lex!(self.lexer.parse()) {
+            Some(first) => first,
+            None => Err(Error::ExpectedOneOf(vec![
+                TokenType::Identifier,
+                TokenType::Integer,
+                TokenType::Float,
+            ]))?
         };
 
-        let ast_let = HAst::Let(ws_0, self.ctx.alloc(ast_let));
+        match first.tok_type {
+            TokenType::Identifier => Ok(Expr::Identifier(first)),
+            TokenType::Integer => Ok(Expr::Literal(Literal::Integer(first))),
+            TokenType::Float => Ok(Expr::Literal(Literal::Float(first))),
+            | TokenType::Symbol(_)
+            | TokenType::Keyword(_) => unreachable!()
+        }
+    }
 
-        Ok(Some(self.ctx.alloc(ast_let)))
+    fn parse_arith_prod(&mut self) -> Result<Expr<'input, 'hacx>> {
+        let left = self.parse_primary()?;
+        
+        loop {
+            try_lex!(self.lexer.peek());
+            let right = self.parse_primary()?;
+        }
     }
 }
 
 impl<'input, 'hacx, L: Lexer<'input>> lib_parser_types::Parser<'input, 'hacx> for Parser<'input, 'hacx, L> {
-    fn parse(&mut self) -> Result<Option<HAstPtr<'input, 'hacx>>> {
+    fn parse(&mut self) -> Result<Option<HAst<'input, 'hacx>>> {
         self.parse()
     }
 }

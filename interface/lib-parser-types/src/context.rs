@@ -1,24 +1,26 @@
 
 use lib_arena::{Arena, local::LocalArena, sync::SyncArena};
-use super::{HAst, Let, Expr};
+use super::{HAst, Let, Expr, Assign};
 
-pub type LocalContext<A, B, C> =
-    Context<LocalArena<A>, LocalArena<B>, LocalArena<C>>;
+pub type LocalContext<A, B, C, D> =
+    Context<LocalArena<A>, LocalArena<B>, LocalArena<C>, LocalArena<D>>;
     
-pub type SyncContext<A, B, C> =
-    Context<SyncArena<A>, SyncArena<B>, SyncArena<C>>;
+pub type SyncContext<A, B, C, D> =
+    Context<SyncArena<A>, SyncArena<B>, SyncArena<C>, SyncArena<D>>;
 
 #[derive(Default)]
-pub struct Context<A, B, C> {
+pub struct Context<A, B, C, D> {
     pub high_ast: A,
-    pub let_node: B,
-    pub expr: C,
+    pub node_let: B,
+    pub node_assign: C,
+    pub expr: D,
 }
 
 #[derive(Clone, Copy)]
 pub struct ContextRef<'input, 'hacx> {
     high_ast: &'hacx dyn Arena<Value = HAst<'input, 'hacx>>,
-    let_node: &'hacx dyn Arena<Value = Let<'input, 'hacx>>,
+    node_let: &'hacx dyn Arena<Value = Let<'input, 'hacx>>,
+    node_assign: &'hacx dyn Arena<Value = Assign<'input, 'hacx>>,
     expr: &'hacx dyn Arena<Value = Expr<'input, 'hacx>>,
 }
 
@@ -27,16 +29,18 @@ pub trait ContextOverload<'ctx, A> {
     fn alloc(self, value: A) -> &'ctx mut A;
 }
 
-impl<A, B, C> Context<A, B, C> {
+impl<A, B, C, D> Context<A, B, C, D> {
     pub fn as_ref<'input, 'hacx>(&'hacx self) -> ContextRef<'input, 'hacx>
     where
         A: Arena<Value = HAst<'input, 'hacx>>,
         B: Arena<Value = Let<'input, 'hacx>>,
-        C: Arena<Value = Expr<'input, 'hacx>>,
+        C: Arena<Value = Assign<'input, 'hacx>>,
+        D: Arena<Value = Expr<'input, 'hacx>>,
     {
         ContextRef {
             high_ast: &self.high_ast,
-            let_node: &self.let_node,
+            node_let: &self.node_let,
+            node_assign: &self.node_assign,
             expr: &self.expr,
         }
     }
@@ -53,26 +57,21 @@ impl<'input, 'hacx> ContextRef<'input, 'hacx> {
     }
 }
 
-impl<'input, 'hacx> ContextOverload<'hacx, HAst<'input, 'hacx>> for ContextRef<'input, 'hacx> {
-    #[inline]
-    #[allow(clippy::mut_from_ref)]
-    fn alloc(self, value: HAst<'input, 'hacx>) -> &'hacx mut HAst<'input, 'hacx> {
-        self.high_ast.alloc(value)
-    }
+macro_rules! overload_set {
+    ($($field:ident => $type:ident),* $(,)?) => {$(
+        impl<'input, 'hacx> ContextOverload<'hacx, $type<'input, 'hacx>> for ContextRef<'input, 'hacx> {
+            #[inline]
+            #[allow(clippy::mut_from_ref)]
+            fn alloc(self, value: $type<'input, 'hacx>) -> &'hacx mut $type<'input, 'hacx> {
+                self.$field.alloc(value)
+            }
+        }
+    )*};
 }
 
-impl<'input, 'hacx> ContextOverload<'hacx, Let<'input, 'hacx>> for ContextRef<'input, 'hacx> {
-    #[inline]
-    #[allow(clippy::mut_from_ref)]
-    fn alloc(self, value: Let<'input, 'hacx>) -> &'hacx mut Let<'input, 'hacx> {
-        self.let_node.alloc(value)
-    }
-}
-
-impl<'input, 'hacx> ContextOverload<'hacx, Expr<'input, 'hacx>> for ContextRef<'input, 'hacx> {
-    #[inline]
-    #[allow(clippy::mut_from_ref)]
-    fn alloc(self, value: Expr<'input, 'hacx>) -> &'hacx mut Expr<'input, 'hacx> {
-        self.expr.alloc(value)
-    }
+overload_set! {
+    high_ast => HAst,
+    node_let => Let,
+    node_assign => Assign,
+    expr => Expr,
 }
