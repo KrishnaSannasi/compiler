@@ -3,14 +3,14 @@ use parking_lot::RwLock;
 const DEFAULT_SLAB_CAPACITY: usize = 64;
 
 pub struct SyncArena<T> {
-    data: RwLock<Vec<RwLock<Vec<T>>>>
+    data: RwLock<Vec<RwLock<Vec<T>>>>,
 }
 
 impl<T> SyncArena<T> {
     #[allow(clippy::new_without_default)]
     pub const fn new() -> Self {
         Self {
-            data: RwLock::new(Vec::new())
+            data: RwLock::new(Vec::new()),
         }
     }
 
@@ -20,15 +20,11 @@ impl<T> SyncArena<T> {
 
         let len = data.len();
         data.push(RwLock::new(Vec::with_capacity(DEFAULT_SLAB_CAPACITY)));
-        let slab = unsafe {
-            data.get_unchecked_mut(len).get_mut()
-        };
+        let slab = unsafe { data.get_unchecked_mut(len).get_mut() };
 
         slab.push(value);
 
-        unsafe {
-            &mut *slab.as_mut_ptr()
-        }
+        unsafe { &mut *slab.as_mut_ptr() }
     }
 
     #[allow(clippy::mut_from_ref)]
@@ -38,7 +34,7 @@ impl<T> SyncArena<T> {
         if data.is_empty() {
             drop(data);
 
-            return self.alloc_new_slab(value)
+            return self.alloc_new_slab(value);
         }
 
         for slab in data.iter() {
@@ -50,7 +46,7 @@ impl<T> SyncArena<T> {
                 if len < slab.capacity() {
                     slab.push(value);
 
-                    return unsafe { &mut *slab.as_mut_ptr().add(len) }
+                    return unsafe { &mut *slab.as_mut_ptr().add(len) };
                 }
             }
         }
@@ -73,15 +69,23 @@ impl<T> SyncArena<T> {
     }
 
     pub fn value_capacity(&self) -> usize {
-        self.data.read().iter().map(|slab| slab.read().capacity()).sum()
+        self.data
+            .read()
+            .iter()
+            .map(|slab| slab.read().capacity())
+            .sum()
     }
 
     pub fn value_remaining_capacity(&self) -> usize {
-        self.data.read().iter().map(|slab| {
-            let slab = slab.read();
+        self.data
+            .read()
+            .iter()
+            .map(|slab| {
+                let slab = slab.read();
 
-            slab.capacity() - slab.len()
-        }).sum()
+                slab.capacity() - slab.len()
+            })
+            .sum()
     }
 }
 
@@ -121,7 +125,7 @@ fn stampede() {
             }
         }))
     }
-    
+
     for thread in threads {
         thread.join().unwrap();
     }
@@ -133,4 +137,3 @@ fn stampede() {
     dbg!(ARENA.value_count());
     dbg!(ARENA.value_remaining_capacity());
 }
-

@@ -1,14 +1,4 @@
-
-use lib_lexer_types::{
-    Result,
-    CodePoint,
-    Token,
-    TokenType,
-    Symbol,
-    Keyword,
-    Error,
-    ErrorType
-};
+use lib_lexer_types::{CodePoint, Error, ErrorType, Keyword, Result, Symbol, Token, TokenType};
 
 macro_rules! get_token_ty_from_ident {
     ($($kw:ident => $value:literal),* $(,)?) => {
@@ -19,7 +9,7 @@ macro_rules! get_token_ty_from_ident {
                     $($value => Keyword::$kw,)*
                     _ => break 'here TokenType::Identifier
                 });
-    
+
                 match unreachable {
                     $(Keyword::$kw => ()),*
                 }
@@ -30,15 +20,16 @@ macro_rules! get_token_ty_from_ident {
 
 pub struct Lexer<'input> {
     input: &'input str,
-    start: CodePoint
+    start: CodePoint,
 }
 
 fn split_on_false<F: FnMut(char) -> bool>(s: &str, mut f: F) -> (&str, &str) {
-    let len = s.chars()
+    let len = s
+        .chars()
         .take_while(move |&c| f(c))
         .map(|c| c.len_utf8())
         .sum();
-    
+
     s.split_at(len)
 }
 
@@ -81,8 +72,11 @@ impl<'input> Lexer<'input> {
 
             let end = CodePoint::new_unchecked(
                 self.start.row() + rows,
-                if rows == 0 { self.start.col() + lexeme.len() as u32 }
-                else { cols }
+                if rows == 0 {
+                    self.start.col() + lexeme.len() as u32
+                } else {
+                    cols
+                },
             );
 
             let start = std::mem::replace(&mut self.start, end);
@@ -90,8 +84,8 @@ impl<'input> Lexer<'input> {
             return Ok(Some(Token {
                 lexeme,
                 tok_type: TokenType::Whitespace,
-                span: start.span(end)
-            }))
+                span: start.span(end),
+            }));
         } else if first.is_alphabetic() || first == '_' {
             let (ident, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
 
@@ -110,7 +104,8 @@ impl<'input> Lexer<'input> {
         } else if first.is_numeric() {
             let (first, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
             if let Some('.') = rest.chars().next() {
-                let (second, rest) = split_on_false(&rest[1..], |c| c.is_alphanumeric() || c == '_');
+                let (second, rest) =
+                    split_on_false(&rest[1..], |c| c.is_alphanumeric() || c == '_');
 
                 let lexeme = &self.input[..first.len() + 1 + second.len()];
 
@@ -130,33 +125,31 @@ impl<'input> Lexer<'input> {
                 c => {
                     let end = CodePoint::new_unchecked(
                         self.start.row(),
-                        self.start.col() + c.len_utf8() as u32
+                        self.start.col() + c.len_utf8() as u32,
                     );
-                    
+
                     #[allow(clippy::try_err)]
                     Err(Error {
                         err: ErrorType::UnknownCharacter(c),
-                        span: self.start.span(end)
+                        span: self.start.span(end),
                     })?
                 }
             };
-            
+
             (tok_type, self.input.split_at(first.len_utf8()))
         };
 
         self.input = rest;
 
-        let end = CodePoint::new_unchecked(
-            self.start.row(),
-            self.start.col() + lexeme.len() as u32
-        );
+        let end =
+            CodePoint::new_unchecked(self.start.row(), self.start.col() + lexeme.len() as u32);
 
         let start = std::mem::replace(&mut self.start, end);
 
         Ok(Some(Token {
             lexeme,
             tok_type,
-            span: start.span(end)
+            span: start.span(end),
         }))
     }
 }

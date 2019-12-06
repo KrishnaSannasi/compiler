@@ -1,7 +1,8 @@
 mod span;
-pub use span::{Span, CodePoint};
+pub use span::{CodePoint, Span};
 
-pub type Result<T, E = lib_error::Error<Error>> = std::result::Result<T, E>;
+pub type LexError = lib_error::Error<Error>;
+pub type Result<T, E = LexError> = std::result::Result<T, E>;
 
 pub trait Lexer<'input> {
     fn parse(&mut self) -> Result<Option<Token<'input>>>;
@@ -22,12 +23,12 @@ impl<'input, L: Lexer<'input> + ?Sized> Lexer<'input> for Box<L> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error {
     pub err: ErrorType,
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
-    UnknownCharacter(char)
+    UnknownCharacter(char),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -45,18 +46,35 @@ pub enum TokenType {
     Identifier,
     Integer,
     Float,
-    Whitespace
+    Whitespace,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Symbol {
-    Assign, Dot, Semicolon,
-    Add, Sub, Mul, Div, Rem,
-    Equal, NotEqual, LessThan, GreaterThan, LessEqual, GreaterEqual,
+    Assign,
+    Dot,
+    Semicolon,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Keyword {
-    Let, Mut, Match, Loop, Break,
-    Continue, Return, Type,
+    Let,
+    Mut,
+    Match,
+    Loop,
+    Break,
+    Continue,
+    Return,
+    Type,
 }
