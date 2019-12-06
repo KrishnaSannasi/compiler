@@ -20,8 +20,14 @@ impl<'input, L: Lexer<'input> + ?Sized> Lexer<'input> for Box<L> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error {
+pub struct Error {
+    pub err: ErrorType,
+    pub span: Span
+}
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ErrorType {
+    UnknownCharacter(char)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

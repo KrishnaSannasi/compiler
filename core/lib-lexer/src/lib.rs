@@ -5,7 +5,9 @@ use lib_lexer_types::{
     Token,
     TokenType,
     Symbol,
-    Keyword
+    Keyword,
+    Error,
+    ErrorType
 };
 
 macro_rules! get_token_ty_from_ident {
@@ -125,7 +127,18 @@ impl<'input> Lexer<'input> {
                 '.' => TokenType::Symbol(Symbol::Dot),
                 '=' => TokenType::Symbol(Symbol::Assign),
                 ';' => TokenType::Symbol(Symbol::Semicolon),
-                c => todo!("{}", c)
+                c => {
+                    let end = CodePoint::new_unchecked(
+                        self.start.row(),
+                        self.start.col() + c.len_utf8() as u32
+                    );
+                    
+                    #[allow(clippy::try_err)]
+                    Err(Error {
+                        err: ErrorType::UnknownCharacter(c),
+                        span: self.start.span(end)
+                    })?
+                }
             };
             
             (tok_type, self.input.split_at(first.len_utf8()))
