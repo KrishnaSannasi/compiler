@@ -6,7 +6,7 @@ members = [
     'interface/lib-error',
     'interface/lib-lexer-types',
 
-    'compiler/lib-lexer',
+    'core/lib-lexer',
 
     'tools/lib-arena'
 ]
