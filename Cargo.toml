@@ -7,6 +7,8 @@ members = [
     'interface/lib-lexer-types',
 
     'compiler/lib-lexer',
+
+    'tools/lib-arena'
 ]
 
 [profile.dev]
