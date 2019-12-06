@@ -3,6 +3,22 @@ pub use span::{Span, CodePoint};
 
 pub type Result<T, E = lib_error::Error<Error>> = std::result::Result<T, E>;
 
+pub trait Lexer<'input> {
+    fn parse(&mut self) -> Result<Option<Token<'input>>>;
+}
+
+impl<'input, L: Lexer<'input> + ?Sized> Lexer<'input> for &mut L {
+    fn parse(&mut self) -> Result<Option<Token<'input>>> {
+        L::parse(self)
+    }
+}
+
+impl<'input, L: Lexer<'input> + ?Sized> Lexer<'input> for Box<L> {
+    fn parse(&mut self) -> Result<Option<Token<'input>>> {
+        L::parse(self)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
 

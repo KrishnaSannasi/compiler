@@ -40,6 +40,12 @@ fn split_on_false<F: FnMut(char) -> bool>(s: &str, mut f: F) -> (&str, &str) {
     s.split_at(len)
 }
 
+impl<'input> lib_lexer_types::Lexer<'input> for Lexer<'input> {
+    fn parse(&mut self) -> Result<Option<Token<'input>>> {
+        self.parse()
+    }
+}
+
 impl<'input> Lexer<'input> {
     pub fn new(input: &'input str) -> Self {
         Self {
