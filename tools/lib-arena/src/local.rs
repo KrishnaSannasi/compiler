@@ -4,6 +4,12 @@ pub struct LocalArena<T> {
     data: UnsafeCell<Vec<Vec<T>>>,
 }
 
+impl<T> Default for LocalArena<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> LocalArena<T> {
     pub const fn new() -> Self {
         Self {

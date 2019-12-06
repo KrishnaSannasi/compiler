@@ -6,6 +6,12 @@ pub struct SyncArena<T> {
     data: RwLock<Vec<RwLock<Vec<T>>>>,
 }
 
+impl<T> Default for SyncArena<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> SyncArena<T> {
     #[allow(clippy::new_without_default)]
     pub const fn new() -> Self {
