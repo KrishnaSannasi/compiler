@@ -1,5 +1,38 @@
 use std::fmt;
 
+pub trait WithContext<E> {
+    type Output;
+
+    fn with_context(self, err: E) -> Self::Output;
+}
+
+impl<N, E, P> WithContext<N> for Error<E, P> {
+    type Output = Error<N, Self>;
+
+    #[inline]
+    fn with_context(self, err: N) -> Self::Output {
+        Error {
+            err,
+            cause: Some(self)
+        }
+    }
+}
+
+impl<T, N, E, P> WithContext<N> for Result<T, Error<E, P>> {
+    type Output = Result<T, Error<N, Error<E, P>>>;
+
+    #[inline]
+    fn with_context(self, err: N) -> Self::Output {
+        match self {
+            Ok(value) => Ok(value),
+            Err(cause) => Err(Error {
+                err,
+                cause: Some(cause)
+            })
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Error<E, P = Initial> {
     err: E,

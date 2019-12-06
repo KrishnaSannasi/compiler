@@ -6,6 +6,20 @@ pub type Result<T, E = LexError> = std::result::Result<T, E>;
 
 pub trait Lexer<'input> {
     fn parse(&mut self) -> Result<Option<Token<'input>>>;
+    
+    fn parse_with_whitespace(&mut self) -> Result<(Option<Token<'input>>, Option<Token<'input>>)> {
+        let token = self.parse()?;
+
+        match token {
+            None => Ok((None, None)),
+            ws@Some(Token { tok_type: TokenType::Whitespace, .. }) => {
+                let token = self.parse()?;
+
+                Ok((ws, token))
+            },
+            Some(token) => Ok((None, Some(token)))
+        }
+    }
 }
 
 impl<'input, L: Lexer<'input> + ?Sized> Lexer<'input> for &mut L {
