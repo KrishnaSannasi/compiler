@@ -1,5 +1,5 @@
 use lib_lexer_types::{
-    CodePoint, Error, ErrorType, Input, Keyword, Result, Symbol, Token, TokenType,
+    CodePoint, Error, ErrorType, Keyword, Real, Result, Symbol, Token, TokenData,
 };
 
 macro_rules! get_token_ty_from_ident {
@@ -7,9 +7,9 @@ macro_rules! get_token_ty_from_ident {
         |ident| {
             #[allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
             'here: loop {
-                let unreachable: Keyword = break TokenType::Keyword(match ident {
+                let unreachable: Keyword = break TokenData::Keyword(match ident {
                     $($value => Keyword::$kw,)*
-                    _ => break 'here TokenType::Identifier
+                    _ => break 'here TokenData::Identifier(lib_str_interner::intern(ident))
                 });
 
                 match unreachable {
@@ -55,7 +55,7 @@ impl<'input> Lexer<'input> {
             None => return Ok(None),
         };
 
-        let whitespace = if first.is_whitespace() {
+        if first.is_whitespace() {
             let mut rows = 0;
             let mut cols = 0;
             let (lexeme, rest) = split_on_false(self.input, |c| {
@@ -72,7 +72,7 @@ impl<'input> Lexer<'input> {
 
             self.input = rest;
 
-            let end = CodePoint::new_unchecked(
+            self.start = CodePoint::new_unchecked(
                 self.start.row() + rows,
                 if rows == 0 {
                     self.start.col() + lexeme.len() as u32
@@ -80,15 +80,6 @@ impl<'input> Lexer<'input> {
                     cols
                 },
             );
-
-            let start = std::mem::replace(&mut self.start, end);
-
-            Some(Input {
-                lexeme,
-                span: start.span(end),
-            })
-        } else {
-            None
         };
 
         let first = match self.input.chars().next() {
@@ -96,8 +87,13 @@ impl<'input> Lexer<'input> {
             None => return Ok(None),
         };
 
-        let (tok_type, (lexeme, rest)) = if first.is_alphabetic() || first == '_' {
+        let start = self.start;
+        let make_end = move |len| CodePoint::new_unchecked(start.row(), start.col() + len as u32);
+
+        let (data, (end, rest)) = if first.is_alphabetic() || first == '_' {
             let (ident, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
+
+            let end = make_end(ident.len());
 
             let get_tok_ty = get_token_ty_from_ident!(
                 Let => "let",
@@ -110,7 +106,7 @@ impl<'input> Lexer<'input> {
                 Type => "type",
             );
 
-            (get_tok_ty(ident), (ident, rest))
+            (get_tok_ty(ident), (end, rest))
         } else if first.is_numeric() {
             let (first, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
             if let Some('.') = rest.chars().next() {
@@ -119,24 +115,41 @@ impl<'input> Lexer<'input> {
 
                 let lexeme = &self.input[..first.len() + 1 + second.len()];
 
-                (TokenType::Float, (lexeme, rest))
+                let end = make_end(lexeme.len());
+
+                let real = match Real::new(lexeme.parse::<f64>().map_err(|err| Error {
+                    err: ErrorType::InvalidFloat(Some(err)),
+                    span: self.start.span(end),
+                })?) {
+                    Some(real) => real,
+                    None => Err(Error {
+                        err: ErrorType::InvalidFloat(None),
+                        span: self.start.span(end),
+                    })?,
+                };
+
+                (TokenData::Float(real), (end, rest))
             } else {
-                (TokenType::Integer, (first, rest))
+                let end = make_end(first.len());
+
+                let int = first.parse::<u128>().map_err(|err| Error {
+                    err: ErrorType::InvalidInt(err),
+                    span: self.start.span(end),
+                })?;
+
+                (TokenData::Integer(int), (end, rest))
             }
         } else {
-            let tok_type = match first {
-                '+' => TokenType::Symbol(Symbol::Add),
-                '-' => TokenType::Symbol(Symbol::Sub),
-                '*' => TokenType::Symbol(Symbol::Mul),
-                '/' => TokenType::Symbol(Symbol::Div),
-                '.' => TokenType::Symbol(Symbol::Dot),
-                '=' => TokenType::Symbol(Symbol::Assign),
-                ';' => TokenType::Symbol(Symbol::Semicolon),
+            let data = match first {
+                '+' => TokenData::Symbol(Symbol::Add),
+                '-' => TokenData::Symbol(Symbol::Sub),
+                '*' => TokenData::Symbol(Symbol::Mul),
+                '/' => TokenData::Symbol(Symbol::Div),
+                '.' => TokenData::Symbol(Symbol::Dot),
+                '=' => TokenData::Symbol(Symbol::Assign),
+                ';' => TokenData::Symbol(Symbol::Semicolon),
                 c => {
-                    let end = CodePoint::new_unchecked(
-                        self.start.row(),
-                        self.start.col() + c.len_utf8() as u32,
-                    );
+                    let end = make_end(c.len_utf8());
 
                     #[allow(clippy::try_err)]
                     Err(Error {
@@ -146,23 +159,18 @@ impl<'input> Lexer<'input> {
                 }
             };
 
-            (tok_type, self.input.split_at(first.len_utf8()))
+            let (_, rest) = self.input.split_at(first.len_utf8());
+            let end = make_end(first.len_utf8());
+
+            (data, (end, rest))
         };
 
         self.input = rest;
-
-        let end =
-            CodePoint::new_unchecked(self.start.row(), self.start.col() + lexeme.len() as u32);
-
-        let start = std::mem::replace(&mut self.start, end);
+        let start = end;
 
         Ok(Some(Token {
-            tok_type,
-            whitespace,
-            input: Input {
-                lexeme,
-                span: start.span(end),
-            },
+            data,
+            span: start.span(end),
         }))
     }
 }

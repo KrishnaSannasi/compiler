@@ -1,6 +1,8 @@
 mod span;
 pub use span::{CodePoint, Span};
 
+use lib_str_interner::ThinStr;
+
 pub type LexError = lib_error::Error<Error>;
 pub type Result<T, E = LexError> = std::result::Result<T, E>;
 
@@ -71,20 +73,55 @@ pub struct Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     UnknownCharacter(char),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Input<'input> {
-    pub lexeme: &'input str,
-    pub span: Span,
+    InvalidFloat(Option<std::num::ParseFloatError>),
+    InvalidInt(std::num::ParseIntError),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Token<'input> {
-    pub tok_type: TokenType,               // 2 bytes
-    pub whitespace: Option<Input<'input>>, // 32 bytes
-    pub input: Input<'input>,              // 32 bytes
-                                           // 6 padding bytes
+    pub data: TokenData<'input>, // 24 bytes
+    pub span: Span,              // 16 bytes
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Real(f64);
+
+impl Eq for Real {}
+impl PartialEq for Real {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bits() == other.0.to_bits()
+    }
+}
+
+use std::hash::{Hash, Hasher};
+impl Hash for Real {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.to_bits().hash(state)
+    }
+}
+
+impl Real {
+    pub fn new(value: f64) -> Option<Self> {
+        if value.is_finite() {
+            Some(Self(value))
+        } else {
+            None
+        }
+    }
+
+    pub fn get(self) -> f64 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TokenData<'input> {
+    Symbol(Symbol),
+    Keyword(Keyword),
+    Identifier(ThinStr),
+    Integer(u128),
+    Float(Real),
+    StringLiteral(&'input str),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -94,6 +131,20 @@ pub enum TokenType {
     Identifier,
     Integer,
     Float,
+    StringLiteral,
+}
+
+impl TokenData<'_> {
+    pub fn tok_type(self) -> TokenType {
+        match self {
+            TokenData::Symbol(sym) => TokenType::Symbol(sym),
+            TokenData::Keyword(kw) => TokenType::Keyword(kw),
+            TokenData::Identifier(_) => TokenType::Identifier,
+            TokenData::Integer(_) => TokenType::Integer,
+            TokenData::Float(_) => TokenType::Float,
+            TokenData::StringLiteral(_) => TokenType::StringLiteral,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
