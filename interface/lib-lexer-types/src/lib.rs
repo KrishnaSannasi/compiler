@@ -73,6 +73,8 @@ pub struct Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     UnknownCharacter(char),
+    InvalidFloat(Option<std::num::ParseFloatError>),
+    InvalidInt(std::num::ParseIntError)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
