@@ -88,9 +88,7 @@ impl<'input> Lexer<'input> {
         };
 
         let start = self.start;
-        let make_end = move |len| CodePoint::new_unchecked(
-            start.row(), start.col() + len as u32
-        );
+        let make_end = move |len| CodePoint::new_unchecked(start.row(), start.col() + len as u32);
 
         let (data, (end, rest)) = if first.is_alphabetic() || first == '_' {
             let (ident, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
@@ -119,27 +117,25 @@ impl<'input> Lexer<'input> {
 
                 let end = make_end(lexeme.len());
 
-                let real = match Real::new(lexeme.parse::<f64>()
-                    .map_err(|err| Error {
-                        err: ErrorType::InvalidFloat(Some(err)),
-                        span: self.start.span(end),
-                    })?) {
+                let real = match Real::new(lexeme.parse::<f64>().map_err(|err| Error {
+                    err: ErrorType::InvalidFloat(Some(err)),
+                    span: self.start.span(end),
+                })?) {
                     Some(real) => real,
                     None => Err(Error {
                         err: ErrorType::InvalidFloat(None),
                         span: self.start.span(end),
-                    })?
+                    })?,
                 };
 
                 (TokenData::Float(real), (end, rest))
             } else {
                 let end = make_end(first.len());
 
-                let int = first.parse::<u128>()
-                    .map_err(|err| Error {
-                        err: ErrorType::InvalidInt(err),
-                        span: self.start.span(end),
-                    })?;
+                let int = first.parse::<u128>().map_err(|err| Error {
+                    err: ErrorType::InvalidInt(err),
+                    span: self.start.span(end),
+                })?;
 
                 (TokenData::Integer(int), (end, rest))
             }
@@ -162,7 +158,7 @@ impl<'input> Lexer<'input> {
                     })?
                 }
             };
-            
+
             let (_, rest) = self.input.split_at(first.len_utf8());
             let end = make_end(first.len_utf8());
 

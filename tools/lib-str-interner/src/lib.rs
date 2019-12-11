@@ -1,16 +1,15 @@
-
+use std::alloc::{alloc, handle_alloc_error, Layout};
 use std::collections::HashSet;
-use std::alloc::{Layout, alloc, handle_alloc_error};
-use std::{ptr, fmt};
-use std::hash::{Hasher, Hash};
+use std::hash::{Hash, Hasher};
+use std::{fmt, ptr};
 
-use parking_lot::RwLock;
 use once_cell::sync::OnceCell;
+use parking_lot::RwLock;
 
 macro_rules! static_assert {
     ($a:expr) => {
         const _: () = [()][(!$a) as usize];
-    }
+    };
 }
 
 static_assert! { std::mem::align_of::<u8>() < std::mem::align_of::<usize>() }
@@ -39,18 +38,16 @@ pub fn intern(value: &str) -> ThinStr {
 fn intern_slow(interner: &Interner, value: &str) -> ThinStr {
     unsafe {
         let len = value.len() + std::mem::size_of::<usize>();
-        let len = (len + std::mem::align_of::<usize>() - 1) / std::mem::align_of::<usize>() * std::mem::align_of::<usize>();
+        let len = (len + std::mem::align_of::<usize>() - 1) / std::mem::align_of::<usize>()
+            * std::mem::align_of::<usize>();
 
-        let layout = Layout::from_size_align_unchecked(
-            len,
-            std::mem::align_of::<usize>()
-        );
+        let layout = Layout::from_size_align_unchecked(len, std::mem::align_of::<usize>());
 
         let ptr = ptr::NonNull::new(alloc(layout));
 
         let ptr = match ptr {
             Some(ptr) => ptr,
-            None => handle_alloc_error(layout)
+            None => handle_alloc_error(layout),
         };
 
         ptr.cast::<usize>().as_ptr().write(value.len());
@@ -58,14 +55,12 @@ fn intern_slow(interner: &Interner, value: &str) -> ThinStr {
         ptr::copy_nonoverlapping(
             value.as_ptr(),
             ptr.cast::<u8>().as_ptr().add(std::mem::size_of::<usize>()),
-            value.len()
+            value.len(),
         );
 
-        let interned_value: *mut [u8] = std::slice::from_raw_parts_mut(
-            ptr.cast::<u8>().as_ptr(),
-            value.len()
-        );
-        
+        let interned_value: *mut [u8] =
+            std::slice::from_raw_parts_mut(ptr.cast::<u8>().as_ptr(), value.len());
+
         // this allocation is guarded to align of usize
         #[allow(clippy::cast_ptr_alignment)]
         let interned_value: *mut ThinStrInner = interned_value as _;
@@ -73,10 +68,8 @@ fn intern_slow(interner: &Interner, value: &str) -> ThinStr {
         let value = ThinStr {
             ptr: ptr::NonNull::from(&*interned_value).cast(),
         };
-        
-        interner
-            .write()
-            .insert(interned_value);
+
+        interner.write().insert(interned_value);
 
         value
     }
@@ -86,7 +79,7 @@ fn intern_slow(interner: &Interner, value: &str) -> ThinStr {
 #[derive(Debug, Eq)]
 struct ThinStrInner {
     len: usize,
-    data: str
+    data: str,
 }
 
 impl std::borrow::Borrow<str> for Box<ThinStrInner> {
@@ -164,10 +157,13 @@ impl ThinStr {
     pub fn to_str(self) -> &'static str {
         unsafe {
             let len = *self.ptr.cast::<usize>().as_ptr();
-        
+
             let slice = std::slice::from_raw_parts(
-                self.ptr.cast::<u8>().as_ptr().add(std::mem::size_of::<usize>()),
-                len
+                self.ptr
+                    .cast::<u8>()
+                    .as_ptr()
+                    .add(std::mem::size_of::<usize>()),
+                len,
             );
 
             std::str::from_utf8_unchecked(slice)
@@ -185,7 +181,7 @@ fn simple_intern() {
     assert_eq!(x, y);
     assert_eq!(x, z);
     assert_eq!(y, z);
-    
+
     assert_ne!(x, w);
     assert_ne!(y, w);
     assert_ne!(z, w);

@@ -74,13 +74,13 @@ pub struct Error {
 pub enum ErrorType {
     UnknownCharacter(char),
     InvalidFloat(Option<std::num::ParseFloatError>),
-    InvalidInt(std::num::ParseIntError)
+    InvalidInt(std::num::ParseIntError),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Token<'input> {
     pub data: TokenData<'input>, // 24 bytes
-    pub span: Span,                  // 16 bytes
+    pub span: Span,              // 16 bytes
 }
 
 #[derive(Debug, Clone, Copy)]
