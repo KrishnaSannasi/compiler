@@ -1,5 +1,5 @@
 [package]
-name = "lib-lexer-types"
+name = "lib-str-interner"
 version = "0.1.0"
 authors = ["Ozaren <krishna.sd.2012@gmail.com>"]
 edition = "2018"
@@ -7,5 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lib-error = { path = '../lib-error' }
-lib-str-interner = { path = '../../tools/lib-str-interner' }
+parking_lot = '0.10.0'
+once_cell = '0.1.8'

@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    # 'main',
+    'main',
     
     'interface/lib-error',
     'interface/lib-lexer-types',
@@ -10,7 +10,8 @@ members = [
     'core/lib-lexer',
     'core/lib-parser',
 
-    'tools/lib-arena'
+    'tools/lib-arena',
+    'tools/lib-str-interner',
 ]
 
 [profile.dev]
