@@ -1,5 +1,5 @@
 use lib_lexer_types::{
-    CodePoint, Error, ErrorType, Keyword, Real, Result, Symbol, Token, TokenType,
+    CodePoint, Error, ErrorType, Keyword, Real, Result, Symbol, Token, TokenData,
 };
 
 macro_rules! get_token_ty_from_ident {
@@ -7,9 +7,9 @@ macro_rules! get_token_ty_from_ident {
         |ident| {
             #[allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
             'here: loop {
-                let unreachable: Keyword = break TokenType::Keyword(match ident {
+                let unreachable: Keyword = break TokenData::Keyword(match ident {
                     $($value => Keyword::$kw,)*
-                    _ => break 'here TokenType::Identifier(lib_str_interner::intern(ident))
+                    _ => break 'here TokenData::Identifier(lib_str_interner::intern(ident))
                 });
 
                 match unreachable {
@@ -92,7 +92,7 @@ impl<'input> Lexer<'input> {
             start.row(), start.col() + len as u32
         );
 
-        let (tok_type, (end, rest)) = if first.is_alphabetic() || first == '_' {
+        let (data, (end, rest)) = if first.is_alphabetic() || first == '_' {
             let (ident, rest) = split_on_false(self.input, |c| c.is_alphanumeric() || c == '_');
 
             let end = make_end(ident.len());
@@ -131,7 +131,7 @@ impl<'input> Lexer<'input> {
                     })?
                 };
 
-                (TokenType::Float(real), (end, rest))
+                (TokenData::Float(real), (end, rest))
             } else {
                 let end = make_end(first.len());
 
@@ -141,17 +141,17 @@ impl<'input> Lexer<'input> {
                         span: self.start.span(end),
                     })?;
 
-                (TokenType::Integer(int), (end, rest))
+                (TokenData::Integer(int), (end, rest))
             }
         } else {
-            let tok_type = match first {
-                '+' => TokenType::Symbol(Symbol::Add),
-                '-' => TokenType::Symbol(Symbol::Sub),
-                '*' => TokenType::Symbol(Symbol::Mul),
-                '/' => TokenType::Symbol(Symbol::Div),
-                '.' => TokenType::Symbol(Symbol::Dot),
-                '=' => TokenType::Symbol(Symbol::Assign),
-                ';' => TokenType::Symbol(Symbol::Semicolon),
+            let data = match first {
+                '+' => TokenData::Symbol(Symbol::Add),
+                '-' => TokenData::Symbol(Symbol::Sub),
+                '*' => TokenData::Symbol(Symbol::Mul),
+                '/' => TokenData::Symbol(Symbol::Div),
+                '.' => TokenData::Symbol(Symbol::Dot),
+                '=' => TokenData::Symbol(Symbol::Assign),
+                ';' => TokenData::Symbol(Symbol::Semicolon),
                 c => {
                     let end = make_end(c.len_utf8());
 
@@ -166,14 +166,14 @@ impl<'input> Lexer<'input> {
             let (_, rest) = self.input.split_at(first.len_utf8());
             let end = make_end(first.len_utf8());
 
-            (tok_type, (end, rest))
+            (data, (end, rest))
         };
 
         self.input = rest;
         let start = end;
 
         Ok(Some(Token {
-            tok_type,
+            data,
             span: start.span(end),
         }))
     }

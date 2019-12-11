@@ -79,7 +79,7 @@ pub enum ErrorType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Token<'input> {
-    pub tok_type: TokenType<'input>, // 24 bytes
+    pub data: TokenData<'input>, // 24 bytes
     pub span: Span,                  // 16 bytes
 }
 
@@ -115,13 +115,36 @@ impl Real {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TokenType<'input> {
+pub enum TokenData<'input> {
     Symbol(Symbol),
     Keyword(Keyword),
     Identifier(ThinStr),
     Integer(u128),
     Float(Real),
-    Literal(&'input str),
+    StringLiteral(&'input str),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TokenType {
+    Symbol(Symbol),
+    Keyword(Keyword),
+    Identifier,
+    Integer,
+    Float,
+    StringLiteral,
+}
+
+impl TokenData<'_> {
+    pub fn tok_type(self) -> TokenType {
+        match self {
+            TokenData::Symbol(sym) => TokenType::Symbol(sym),
+            TokenData::Keyword(kw) => TokenType::Keyword(kw),
+            TokenData::Identifier(_) => TokenType::Identifier,
+            TokenData::Integer(_) => TokenType::Integer,
+            TokenData::Float(_) => TokenType::Float,
+            TokenData::StringLiteral(_) => TokenType::StringLiteral,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
