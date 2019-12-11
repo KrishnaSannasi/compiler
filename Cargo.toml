@@ -1,8 +1,6 @@
 [workspace]
 
 members = [
-    'main',
-    
     'interface/lib-error',
     'interface/lib-lexer-types',
     'interface/lib-parser-types',
