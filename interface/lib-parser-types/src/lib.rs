@@ -50,6 +50,7 @@ pub enum Expr<'input, 'hacx> {
 pub enum Literal<'input> {
     Integer(Token<'input>),
     Float(Token<'input>),
+    String(Token<'input>),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]

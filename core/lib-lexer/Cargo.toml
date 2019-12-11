@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 lib-lexer-types = { path = "../../interface/lib-lexer-types" }
+lib-str-interner = { path = "../../tools/lib-str-interner"}

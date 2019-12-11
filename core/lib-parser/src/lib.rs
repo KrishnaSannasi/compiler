@@ -2,7 +2,7 @@
 
 use lib_error::WithContext as _;
 
-use lib_lexer_types::{Keyword, Lexer, Peekable, Symbol, Token, TokenType};
+use lib_lexer_types::{Keyword, Lexer, Peekable, Symbol, Token, TokenData, TokenType};
 
 use lib_parser_types::{context::ContextRef, Error, Expr, HAst, Literal, Result};
 
@@ -38,7 +38,7 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
         let token = try_lex!(self.lexer.parse());
 
         match token {
-            Some(token) if token.tok_type == tok_type => Ok(token),
+            Some(token) if token.data.tok_type() == tok_type => Ok(token),
             _ => Err(Error::Expected(tok_type))?,
         }
     }
@@ -54,7 +54,7 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
                 if tok_type
                     .clone()
                     .into_iter()
-                    .any(|tok_type| tok_type == token.tok_type) =>
+                    .any(|tok_type| tok_type == token.data.tok_type()) =>
             {
                 Ok(token)
             }
@@ -69,8 +69,8 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
             None => return Ok(None),
         };
 
-        match token.tok_type {
-            TokenType::Keyword(Keyword::Let) => self.parse_let(token),
+        match token.data {
+            TokenData::Keyword(Keyword::Let) => self.parse_let(token),
             _ => Ok(None),
         }
     }
@@ -81,7 +81,7 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
             TokenType::Identifier
         ))?;
 
-        let (kw_mut, ident) = if let TokenType::Keyword(Keyword::Mut) = token.tok_type {
+        let (kw_mut, ident) = if let TokenData::Keyword(Keyword::Mut) = token.data {
             let ident = self.expect(TokenType::Identifier)?;
 
             (Some(token), ident)
@@ -119,11 +119,12 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
             ]))?,
         };
 
-        match first.tok_type {
-            TokenType::Identifier => Ok(Expr::Identifier(first)),
-            TokenType::Integer => Ok(Expr::Literal(Literal::Integer(first))),
-            TokenType::Float => Ok(Expr::Literal(Literal::Float(first))),
-            TokenType::Symbol(_) | TokenType::Keyword(_) => todo!("{:?}", first),
+        match first.data {
+            TokenData::Identifier(_) => Ok(Expr::Identifier(first)),
+            TokenData::Integer(_) => Ok(Expr::Literal(Literal::Integer(first))),
+            TokenData::Float(_) => Ok(Expr::Literal(Literal::Float(first))),
+            TokenData::StringLiteral(_) => Ok(Expr::Literal(Literal::String(first))),
+            TokenData::Symbol(_) | TokenData::Keyword(_) => todo!("{:?}", first),
         }
     }
 
@@ -136,9 +137,9 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
                 None => break Ok(left)
             };
 
-            match op.tok_type {
-                | TokenType::Symbol(Symbol::Mul)
-                | TokenType::Symbol(Symbol::Div) => (),
+            match op.data {
+                | TokenData::Symbol(Symbol::Mul)
+                | TokenData::Symbol(Symbol::Div) => (),
                 _ => break Ok(left)
             };
 
@@ -162,9 +163,9 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
                 None => break Ok(left)
             };
 
-            match op.tok_type {
-                | TokenType::Symbol(Symbol::Add)
-                | TokenType::Symbol(Symbol::Sub) => (),
+            match op.data {
+                | TokenData::Symbol(Symbol::Add)
+                | TokenData::Symbol(Symbol::Sub) => (),
                 _ => break Ok(left)
             };
 
