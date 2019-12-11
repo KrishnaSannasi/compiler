@@ -106,7 +106,7 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
     }
 
     fn parse_expr(&mut self) -> Result<Expr<'input, 'hacx>> {
-        self.parse_primary()
+        self.parse_arith_sum()
     }
 
     fn parse_primary(&mut self) -> Result<Expr<'input, 'hacx>> {
@@ -123,16 +123,59 @@ impl<'input, 'hacx, L: Lexer<'input>> Parser<'input, 'hacx, L> {
             TokenType::Identifier => Ok(Expr::Identifier(first)),
             TokenType::Integer => Ok(Expr::Literal(Literal::Integer(first))),
             TokenType::Float => Ok(Expr::Literal(Literal::Float(first))),
-            TokenType::Symbol(_) | TokenType::Keyword(_) => unreachable!(),
+            TokenType::Symbol(_) | TokenType::Keyword(_) => todo!("{:?}", first),
         }
     }
 
     fn parse_arith_prod(&mut self) -> Result<Expr<'input, 'hacx>> {
-        let left = self.parse_primary()?;
+        let mut left = self.parse_primary()?;
 
         loop {
-            try_lex!(self.lexer.peek());
+            let op = match try_lex!(self.lexer.peek()) {
+                Some(op) => op,
+                None => break Ok(left)
+            };
+
+            match op.tok_type {
+                | TokenType::Symbol(Symbol::Mul)
+                | TokenType::Symbol(Symbol::Div) => (),
+                _ => break Ok(left)
+            };
+
+            let _ = self.lexer.parse();
+
             let right = self.parse_primary()?;
+
+            let left_expr = self.ctx.alloc(left);
+            let right_expr = self.ctx.alloc(right);
+
+            left = Expr::Binary(left_expr, op, right_expr)
+        }
+    }
+
+    fn parse_arith_sum(&mut self) -> Result<Expr<'input, 'hacx>> {
+        let mut left = self.parse_arith_prod()?;
+
+        loop {
+            let op = match try_lex!(self.lexer.peek()) {
+                Some(op) => op,
+                None => break Ok(left)
+            };
+
+            match op.tok_type {
+                | TokenType::Symbol(Symbol::Add)
+                | TokenType::Symbol(Symbol::Sub) => (),
+                _ => break Ok(left)
+            };
+
+            let _ = self.lexer.parse();
+
+            let right = self.parse_arith_prod()?;
+
+            let left_expr = self.ctx.alloc(left);
+            let right_expr = self.ctx.alloc(right);
+
+            left = Expr::Binary(left_expr, op, right_expr)
         }
     }
 }

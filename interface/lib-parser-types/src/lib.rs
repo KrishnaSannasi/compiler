@@ -1,4 +1,4 @@
-use lib_lexer_types::{Symbol, Token, TokenType};
+use lib_lexer_types::{Token, TokenType};
 
 pub mod context;
 
@@ -41,9 +41,9 @@ pub enum HAst<'input, 'hacx> {
 pub enum Expr<'input, 'hacx> {
     Literal(Literal<'input>),
     Identifier(Token<'input>),
-    Prefix(Symbol, ExprPtr<'input, 'hacx>),
-    Postfix(ExprPtr<'input, 'hacx>, Symbol),
-    Binary(ExprPtr<'input, 'hacx>, Symbol, ExprPtr<'input, 'hacx>),
+    Prefix(Token<'input>, ExprPtr<'input, 'hacx>),
+    Postfix(ExprPtr<'input, 'hacx>, Token<'input>),
+    Binary(ExprPtr<'input, 'hacx>, Token<'input>, ExprPtr<'input, 'hacx>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
